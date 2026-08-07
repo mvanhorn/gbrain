@@ -36,6 +36,7 @@ async function refreshGatewayForJob(engine: BrainEngine): Promise<void> {
 const GATEWAY_REFRESH_JOB_NAMES = new Set([
   'embed',
   'extract-conversation-facts',
+  'chronicle_extract',
   'enrich',
   'contextual_reindex_per_chunk',
   'autopilot-cycle',
@@ -1599,7 +1600,7 @@ export async function registerBuiltinHandlers(
   // LLM spend per page; no shell). Enqueued by the put_page chronicle backstop
   // and by `gbrain chronicle backfill`. Idempotent (content-addressed event
   // slugs + projection upsert), so a retry re-runs to the same state.
-  worker.register('chronicle_extract', async (job) => {
+  registerBuiltinJob(worker, engine, 'chronicle_extract', async (job) => {
     const slug = typeof job.data.slug === 'string' ? job.data.slug : undefined;
     if (!slug) throw new Error('chronicle_extract job requires data.slug');
     const sourceId = typeof job.data.sourceId === 'string' ? job.data.sourceId : undefined;

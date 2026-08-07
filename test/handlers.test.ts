@@ -182,6 +182,35 @@ describe('autopilot-cycle handler — phase passthrough', () => {
     }
   });
 
+  test('refreshes DB-backed chat model config before chronicle extraction validates job data', async () => {
+    const handler = (worker as any).handlers.get('chronicle_extract');
+    expect(handler).toBeDefined();
+
+    const oldModel = await engine.getConfig('models.chat');
+    configureGateway({
+      chat_model: 'anthropic:claude-sonnet-4-6',
+      env: { ANTHROPIC_API_KEY: 'stale-key', OPENAI_API_KEY: 'fresh-key' },
+    });
+    await engine.setConfig('models.chat', 'openai:gpt-5');
+
+    try {
+      await expect(handler({
+        data: {},
+        signal: { aborted: false } as any,
+        job: { id: 11, name: 'chronicle_extract' } as any,
+      })).rejects.toThrow('chronicle_extract job requires data.slug');
+
+      expect(getChatModel()).toBe('openai:gpt-5');
+    } finally {
+      resetGateway();
+      if (oldModel === null) {
+        await engine.unsetConfig('models.chat');
+      } else {
+        await engine.setConfig('models.chat', oldModel);
+      }
+    }
+  });
+
   test('job.data.phases restricts which phases run', async () => {
     const fs = await import('fs');
     const { execSync } = await import('child_process');
